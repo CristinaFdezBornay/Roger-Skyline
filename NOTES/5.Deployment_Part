@@ -1,0 +1,85 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    5.Deployment_Part                                  :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: crfernan <marvin@42.fr>                    +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2019/02/21 09:59:01 by crfernan          #+#    #+#              #
+#    Updated: 2019/02/25 14:52:53 by crfernan         ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+Okey, so the idea here is that we should install ansible on the VM and the MAC;
+and configure it to deploy the VM file from the MAC.
+
+First, we have to install ansible on the latest version for debian. Tutorial:
+(https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#latest-releases-via-apt-debian)
+	->	MODIFY: /etc/apt/sources.list
+			->	deb http://ppa.launchpad.net/ansible/ansible/ubuntu trusty main
+	->	sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 93C4A3FD7BB9C367
+	->	sudo apt-get update
+	->	sudo apt-get install ansible
+	->	ansible --version: ansible 2.7.7
+
+Then, we'll nedd to install it on the MAC, Tutorial:
+(https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#running-from-source)
+	->	git clone https://github.com/ansible/ansible.git --recursive
+	->	cd ./ansible
+	->	source ./hacking/env-setup
+	->	source ./hacking/env-setup -q
+	->	pip install -r ./requirements.txt
+	->	git pull --rebase
+	->	git submodule update --init --recursive
+	Test	->	ansible all -m ping --ask-pass
+
+NOTE: at some poin I had an error: [can't find /usr/bin/dirmngr]. Solved:
+(https://bugs.launchpad.net/ubuntu/+source/enigmail/+bug/1623087)
+	->	sudo apt remove gnupg
+	->	sudo apt install --reinstall gnupg2
+	->	sudo apt install dirmngr
+
+Now, we'll need to configure it. THIS IS A MERGE OF DIFFERENT TUTORIALS AND SITES:
+To check what we've changed:
+	->	ansible-config dump --only-changed
+
+First, we set the hosts on our MAC, with this we don't have to scpecify the file.
+	->	echo "127.0.0.1:2222" > /Users/crfernan/P42/8_RogerSkyline/NOTES/ansible/ansible_hosts
+	->	export ANSIBLE_INVENTORY=/Users/crfernan/P42/8_RogerSkyline/NOTES/ansible/ansible_hosts
+	Test	->	ansible --list-hosts all
+Now, we can write the ansible.cfg filei; we've copied the oficial updated version:
+()
+	->	MODIFY(14): inventory = /Users/crfernan/P42/8_RogerSkyline/NOTES/ansible/ansible_hosts
+	->	MODIFY(26): remote_port = 2222
+	->	MODIFY(188): command_warnings = False
+
+Now, we need to write the playbook to deploy our html code. 
+
+PLAYBOOK.YML:
+
+
+---
+- hosts: [webserver]
+	become_user: crfernan
+	become_method: sudo
+	tasks:
+	- name: Create backup directory
+	file:
+		path: "/var/www/cristina_42.com/backup"
+		state: directory
+		force: yes
+	- name: Backup cristina_42.com/html to backup
+	copy:
+		src: "/var/www/cristina_42.com/html"
+		dest: "/var/www/cristina_42.com/backup"
+		remote_src: yes
+	- name: Deploy from our file to the VM
+	copy:
+		src: "~/P42/8_RogerSkyline/NOTES/html"
+		dest: "/var/www/cristina_42.com"
+		remote_src: no
+
+WE HAVE TO CHECK THE PERMISSIONS OF THE FOLDERS.
+
+The command to execute it is:
+<ansible-playbook playbook.yml --extra-vars "ansible_ssh_pass=cristina ansible_become_pass= ">

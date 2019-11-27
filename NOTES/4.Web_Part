@@ -1,0 +1,97 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    4.Web_Part                                         :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: crfernan <marvin@42.fr>                    +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2019/02/18 19:23:00 by crfernan          #+#    #+#              #
+#    Updated: 2019/02/22 16:42:06 by crfernan         ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+We first need to install and configure Apache. 
+Tutorial: (https://www.digitalocean.com/community/tutorials/how-to-install-the-apache-web-server-on-debian-9).
+
+Step 1 - Instaling Apache:
+	->	sudo apt update
+	->	sudo apt install apache2
+
+Step 2 - Adjusting the Firewall:
+(https://www.digitalocean.com/community/tutorials/
+	initial-server-setup-with-debian-9)
+	->	sudo apt install ufw
+	->	sudo ufw app List (we make sure that SSH is enabled)
+	->	sudo ufw enable (we cancheck it with [sudo ufw status])
+	->	THIS FIREWALL IS SET TO SSH ON PORT 22 -> WE HAVE TO ADD A RULE FOR 42
+			-> sudo iptables -A INPUT -p tcp --dport 42 -j ACCEPT
+			-> sudo ufw allow 42/tcp
+	->	sudo ufw allow 'WWW'
+	->	sudo ufw allow 80
+
+Step 3 - Checking your Web Server:
+	->	sudo systemctl status apache2
+	->	wget 10.42.14.42
+	->	GOOGLE -> 127.0.0.1:8080
+
+Step 4 — Managing the Apache Process (sudo sytemctl <command> apache2)
+	-> Possible commands <> : stop, start, restart, reload, disable, enable.
+
+Step 5 — Setting Up Virtual Hosts (Recommended)
+	->	sudo mkdir -p /var/www/cristina_42.com/html
+	->	sudo chown -R $USER:$USER /var/www/cristina_42.com/html
+	->	sudo chmod -R 755 /var/www/cristina_42.com
+	->	MODIFY: /var/www/cristina_42.com/html/index.html
+	->	MODIFY: /etc/apache2/sites-available/cristina_42.com.conf
+	->	sudo a2ensite cristina_42.com.conf
+	->	sudo a2dissite 000-default.conf
+	->	sudo apache2ctl configtest
+		NOTE: I had a problem: (Could not reliably determine the server's fully qualified domain name, using 127.0.1.1.
+		Set the 'ServerName' directive globally to suppress this message)
+		SOLVED: (https://askubuntu.com/questions/256013/apache-error-could-not-reliably-determine-the-servers-fully-qualified-domain-n).
+	->	sudo systemctl restart apache2
+	NOTE:	there's something here that has not worked... We should reach
+			cristina_42.com but it donesn't work... OKEY -> 127.0.0.1:8080
+
+Now, we're going to create and configure the Self-Signed SSL Certificate: 
+Turorial: (https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-apache-in-debian-9).
+
+Step 1 — Creating the SSL Certificate:
+	->	sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout
+		/etc/ssl/private/apache-selfsigned.key -out /etc/ssl/certs/apache-selfsigned.crt
+
+Step 2 — Configuring Apache to Use SSL
+	->	MODIFY: /etc/apache2/conf-available/ssl-params.conf
+	->	MODIFY: /etc/apache2/sites-available/cristina_42.com.conf
+			ServerAdmin cristinafernandezbornay@outlook.com
+			ServerName cristina_42.com
+			ServerAlias www.crisitna_42.com
+			DocumentRoot /var/www/cristina_42.com
+			SSLCertificateFile      /etc/ssl/certs/apache-selfsigned.crt
+			SSLCertificateKeyFile /etc/ssl/private/apache-selfsigned.key
+	->	WE HAVEN'T REDIRECT THE DEFAULT CONFIGURATION TO OUR DOMAIN / IP
+
+Step 3 — Adjusting the Firewall
+	->	sudo ufw app list
+	->	sudo ufw allow 'WWW Full'
+	->	sudo ufw delete allow 'WWW'
+	->	sudo ufw status
+
+Step 4 — Enabling the Changes in Apache
+	->	sudo a2enmod ssl
+	->	sudo a2enmod headers
+	->	sudo a2dissite defualt-ssl
+	->	sudo a2ensite cristina_42.com
+	->	sudo a2enconf ssl-params
+	->	sudo apache2ctl configtest
+	->	sudo systemctl restart apache2
+
+Step 5 — Testing Encryption
+	->	https://127.0.0.1:8080
+	->	We can also check that the redirection http->https works.
+
+Step 6 — Changing to a Permanent Redirect
+	->	sudo nano /etc/apache2/sites-available/000-default.conf
+			Redirect permanent "/" "https://127.0.0.1:8080/"
+
+LAST BUT NOT LEAST, we edit the index.html and web_site.html to create the web.

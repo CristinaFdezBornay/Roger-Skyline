@@ -1,0 +1,19 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    2.VM_Part                                          :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: crfernan <marvin@42.fr>                    +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2019/02/18 15:15:16 by crfernan          #+#    #+#              #
+#    Updated: 2019/02/18 15:15:50 by crfernan         ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+1 ->	The [fdisk] command is used to create, format or delete hard disk
+partitions. Here we will use it with the flag [-l] to check the disk size and
+to list the partitions table.
+
+2 ->	The command to list all the packages is [dpkg -l].
+		
+		-> [CHECK WHICH ONES WE NEED TO MEET THE DEMANDS.]

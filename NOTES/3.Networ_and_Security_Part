@@ -1,0 +1,136 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    3.Networ_and_Security_Part                         :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: crfernan <marvin@42.fr>                    +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2019/02/18 15:08:52 by crfernan          #+#    #+#              #
+#    Updated: 2019/02/20 19:04:58 by crfernan         ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+01 ->	It can be done with the command [sudo adduser <user_login>].
+In our case, we did it when creating the VM.
+
+02 ->	To use sudo with this user we'll first need to [su root] to download 
+the sudo package [apt-get install sudo], then we need to include this user in
+the sudoers file [adduser <user_login> sudo]. We can now [su <user_login>] and
+perform operation requiring special rights, such as [dpkg -l].
+
+03 ->	Now, we have to edit the [/etc/network/interfaces] and change dhcp to
+static for the primary network interface. We'll also have to configure our IP
+address [10.42.14.42] and set the netmask to [255.255.255.252].
+
+04 ->	Basics:	VM = SERVER/HOST (remote server we're trying to access).
+				MAC = CLIENT (compputer we're using to access the host).
+		To change the default port of ssh (22), we have to [su root] and modify
+the Port in the file with the ssh information [sudo nano /etc/ssh/sshd_config].
+Then we'll need to restart the system [systemctl restart ssh].
+To check if it's okey we can [sudo netstat -tpln | grep ssh]. Sometimes there
+are more ports open; to cloe them [sudo fuser -k <port>\<protocol>].
+		We create public keys on our computer (mac) using the command
+[ssh-keygen -t rsa]; we'll get 2 files: id_rsa (the private key) and id_rsa.pub
+(the public key). We now have to copy the public into the file authorized_keys
+on the VM (~/.ssh). On the VM we edit the file /etc/ssh/sshd_config to allow 
+PubkeyAuthentication [yes] and to deny the access to root by ssh
+[PermitRootLogin no]. Then, we have to reboot the system [sudo reboot] and
+after starting again, we should be able to connect from our computer (mac) to
+the VM using the command [ssh -p 2222 crfernan@127.0.0.1]. The passphrase will 
+be asked to enable the connection <cristina> and the connection will be
+established.
+
+05 ->	Fisrt of all we need to know which services are used outside the machine
+and get the port, for that we can [sudo netstat -tpln]. We can see that we've 
+sshd on port 42.. Now we install the package of iptables [sudo apt-get install
+iptables]. To check the rules we already have [sudo iptables -L -v]. We're going
+to accept all the packages from the open port, for that we set:
+		[sudo iptables -A INPUT -p tcp --dport 42 -j ACCEPT]
+		NOTE: to configure the web part, we've intalled the firewall ufw.
+
+06 ->	For this we've to install the  package: [sudo apt-get install fail2ban].
+We'll need to change the jail.conf file in order to set the port of ssh to 42. 
+We can check the new rules with iptables. If we try to ATTACCCkkkkkkkkk our VM
+from other computer (mac) (trying to ssh several times with wrong login or
+password), our IP will be blocked by the system. 
+To unblock it we'll [sudo fail2ban-client set sshd unbanip 10.0.2.2].
+
+07 ->	For protecting our VM against scan we've to download and install the
+package [sudo apt-get install portsentry]. We have reconfigure it using this
+tutorial: (https://www.noobunbox.net/serveur/securite/installer-et-configurer-portsentry-debian-ubuntu).
+
+08 ->	To know which servcies are running: [sudo service --status-all | grep +]
+or [sudo system ctl -l --state=running | grep .service], which also prints what
+each service does:
+	
+	avahi-daemon.service      -> Avahi mDNS/DNS-SD Stack
+	cron.service              -> Regular background program processing daemon
+  *	cups-browsed.service      -> Make remote CUPS printers available locally
+  *	cups.service              -> CUPS Scheduler
+	dbus.service              -> D-Bus System Message Bus
+  	exim4.service             -> LSB: exim Mail Transport Agent
+	fail2ban.service          -> Fail2Ban Service
+	getty@tty1.service        -> Getty on tty1
+	portsentry.service        -> LSB: # start and stop portsentry
+	rsyslog.service           -> ystem Logging Service
+	ssh.service               -> OpenBSD Secure Shell server
+	systemd-journald.service  -> running Journal Service
+	systemd-logind.service    -> running Login Service
+	systemd-timesyncd.service -> running Network Time Synchronization
+	systemd-udevd.service     -> running udev Kernel Device Manager
+	user@1000.service         -> running User Manager for UID 1000
+
+From this list the only services we can stop are cups-browsed and cups. Using the
+command [systemctl stop cups] both will be stopped. When we reboot both services
+will reappear. To disable the services we should [systemctl disable cups] and
+[systemctl disable cups-browsed]; to do so we should [su root].
+
+09 ->	SCRIPT:
+		(1)		#!/bin/bash
+		(2)		date
+		(3)		apt-get -y -q update
+		(4)		apt-get -y -q upgrade
+		(5)		echo ""
+
+In the script (1) we first write the date(2). Then, we updates the list of
+available packages and their versions, but it does not install or upgrade any
+packages (3). Next, installs newer versions of the packages you have, after
+updating the lists, the package manager knows about available updates for
+the software you have installed (4). We put '\0' (5).
+Once the script is ready we have to [su root] and use the command [crontab -e]
+to schedule it at 4am (0 4 * * 5 <sh script_9.sh>) and at reboot (@reboot <>),
+and redirect what we had in the stardard output to /var/log/update_script.log.
+
+10 ->	SCRIPT:
+		(01)	#!/bin/bash
+		(02)	touch a b
+		(03)	sudo cat /etc/crontab > a
+		(04)	sudo cat /home/crfernan/crontab_cpy > b
+		(05)	DIFF=$(diff a b)
+		(06)	if [ "$DIFF" != "" ]
+		(07)	then
+		(08)		mail -s "Hello!" root@debian < /home/crfernan/mail_crontab.txt
+		(09)	fi
+		(10)	rm a b
+		(11)	cp /etc/crontab /home/crfernan/crontab_cpy
+
+In the script (1) we first save the content of crontab to a (3) and from the
+previous copy to b (4), the difference of the two files is saved on DIFF (5).
+Next, we compare in the IF if the file has been modified (6). If so, we enter
+the coondition (7) and mail to root@debian the content of mail_crontab.txt (8).
+Once it's done, we delete a and b (10) and reset the copy of crontab (11).
+We modify crontab to run this script at midnight (@midnight).
+We also run it at reboot to check if it works properly.
+	NOTE: crontab is not the same for root then for the user. We'll need to 
+	modify the content of the root to send the email.
+
+INSTALLED PACKAGES:
+	-> sudo
+	-> net-tools
+	-> ssh
+	-> vim
+	-> fail2ban
+	-> nmap
+	-> portsentury
+	-> inotify
+	-> mailutils

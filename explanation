@@ -1,0 +1,110 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    NOTES                                              :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: crfernan <marvin@42.fr>                    +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2019/02/23 16:28:30 by crfernan          #+#    #+#              #
+#    Updated: 2019/02/25 14:43:47 by crfernan         ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+1. BE MORE THAN FRIENDS
+	Okey!
+
+2. VIRTUAL MACHINE
+	->	Disk size of 8 GB
+	->	One partition of 4.2 GB
+	I did this when I create the VM, is can be checked with the command:
+	[sudo fdisk -l]
+	->	Up to date, packages installed. Can be checked running [su script_9.sh]
+	and [dpkg -l].
+	I've been doing this while I got through the other exercises.
+
+3. NETWORK AND SECURITY
+	1 ->	Create a non-root user
+	It can be done with [sudo adduser <user_login>].
+	
+	2 ->	Use sudo with this user
+	Command [adduser <user_login> sudo].
+	Operation requiring special rights: [dpkg -l].
+	
+	3 ->	DHCP deactivated. Static IP and a netmask in \30
+	[sudo systemctp status dhcp].
+	I edited /etc/network/interfaces:
+		dhcp -> static
+		address 10.0.2.1
+		netmask 255.255.255.252
+	It can be checked [sudo ifconfig].
+	
+	4 ->	Change SSH port, configure publickeys and forbid ssh to root
+	To do so I edited /etc/ssh/sshd_config:
+		PubkeyAuthentication yes
+		PermitRootLogin no
+	I also created the keys on the mac [ssh-keygen -t rsa] and copy the public
+	key (id_rsa.pub) in the VM into [./ssh/authorized_keys].
+	Check: [sudo netstat -tpln | grep ssh]
+	
+	5 ->	Set the rules of the firewall with the services used outside the VM
+	To know which services are used outside the VM [sudo netstat -tpln]. To
+	set the firewall I've used (for now) iptables:
+	[sudo iptables -A INPUT -p tcp --dport 42 -j ACCEPT].
+	
+	6 ->	Set a DOS protection on the VM open ports
+	For this I've donwload and configured the software fail2ban: edit jail.conf
+	to set the SSH port to 42. If  we try to atack the VM the IP will be banned,
+	if so: [sudo fail2ban-client set sshd unbanip 10.0.2.2].
+	
+	7 ->	Protection againts scans on the VM open ports
+	For this exercise I've downloaded and configured the software porstentry.
+	Basically the file /etc/portsentry/portsentry.conf had been modified
+	following this tutorial: (https://www.noobunbox.net/serveur/securite/
+	installer-et-configurer-portsentry-debian-ubuntu).
+
+	8 ->	Stop services we don't need for this project.
+	Running services: [sudo systemctl -l --state=running -t service].
+	When we execute this command none useless service should be running.
+	Just in case, we can do:	[sudo systemctl stop <service>]
+								[sudo systemctl disable <service>]
+
+	9 ->	Script to update and schedule to 4am and reboot
+	The script is save as /home/crfernan/script_9.sh. I've schedule it on
+	root crontab, so there will not be any problem with access or write
+	permissions on the file /var/log/update_script.log.
+
+	10 ->	Script to monitor changes of the file /etc/crontab and email to root
+	Same here, the script is on /home/crfernan/script_10.sh but it's scheduled
+	on root crontab, the mail will be on /var/mail/mail.
+
+4. WEB
+	1 ->	Web server, Apache/Nginx, self-signed SSl.
+	Here I've configured the firewall using ufw software : [sudo ufw status].
+	configureWe can google 127.0.0.1:8080 from chrome browser.
+
+5. DEPLOYMENT: Done at ~/Ansible
+			The idea is that we have a folder "html", on which we can work
+	and change the files index.html and site2.html; we can also create more
+	files or do whatever we want. This file has to have all the permisions:
+	[chmod 777 ~/Ansible/DEPLOYMENT/html].
+			We have another folder "ansible" which contains:
+	- ansible.cfg:		default configuration of ansible, what has been modified:
+	MODIFY(14): inventory = /Users/crfernan/P42/8_RogerSkyline/NOTES/ansible/ansible_hosts
+	MODIFY(26): remote_port = 2222
+	MODIFY(188): command_warnings = False
+	
+	- ansible_hosts:	here we can save the hosts we can deploy. I just
+	have the information I use to acces to my VM.
+	
+	- playbook.yml:		first we create a backup from the actual state of
+	/var/www/cristina_42.com/html. Then, we copy from our computer to the
+	VM.
+
+		The command to deploy is (it should be executed from ~/Ansible):
+ansible-playbook ~/Ansible/DEPLOYMENT/ansible/playbook.yml --extra-vars "ansible_ssh_pass=cristina ansible_become_pass= "
+
+		Some other interesting commands:
+ansible-config dump --only-changed
+ansible --list-hosts all
+ansible --version
+ansible all -m ping --ask-pass
